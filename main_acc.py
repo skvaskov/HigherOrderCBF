@@ -7,18 +7,18 @@ import copy
 
 #parameters for lead and ego vehicle
 c0 = 0.1
-c1 = 5
+c1 = 5.0
 c2 = 0.25
 
-m_ego = 1650
-m_lead = 1650
+m_ego = 1650.0
+m_lead = 1650.0
 
 ca = 0.4
 cd = 0.4
 g = 9.81
 
-v_max = 30
-v_min = 0
+v_max = 30.0
+v_min = 0.0
 
 #dynamics for lead and ego vehicles
 def f(t,x,u):
@@ -28,16 +28,16 @@ def f(t,x,u):
     x_ego = x[0]
     v_ego = x[1]
     x_lead = x[2]
-    #v_lead = x[3]
 
     Fr_ego = c0 * np.sign(v_ego) + c1 * v_ego + c2 * v_ego ** 2
-    #Fr_lead = c1 * np.sign(v_lead) + c2 * v_lead + c3 * v_lead ** 2
     return np.array([v_ego,
             1/m_ego * (-Fr_ego + u_ego),
             v_lead])
 
 def get_state_dependent_matrices_for_qp(x,v_des,epsilon):
-    v_ego = x[1]
+    #note that we need to change this method to update only the data in A
+    #not create a new sparse csc object in order to use OSQP's update function
+    v_ego = copy.copy(x[1])
     Fr_ego = c0 * np.sign(v_ego) + c1 * v_ego + c2 * v_ego ** 2
     q = np.array([-2 * Fr_ego / m_ego ** 2,0])
 
@@ -63,13 +63,9 @@ prob = osqp.OSQP()
 P = sparse.csc_matrix([[2/m_ego**2,0],[0,2*pacc]])
 
 l = np.concatenate((np.array([-cd*m_ego*g,0]),-np.inf * np.ones(3)))
-x0 = [0,20,100]
-v_d = 24
-epsilon = 10
-q,A,u = get_state_dependent_matrices_for_qp(x0,v_d,epsilon)
-
-# Setup workspace
-prob.setup(P, q, A, l, u,warm_start=False)
+x0 = [0.0,20.0,100.0]
+v_d = 20.0
+epsilon = 10.0
 
 #simulation parameters
 T = 30
@@ -82,17 +78,17 @@ X[0,:] = x0
 U = np.zeros((N-1,2))
 delta_acc = []
 for i in range(len(tvec)-1):
+    #note that we need to change the below method to update only the data in A
+    #not create a new sparse csc object in order to use OSQP's update function
+
     q_new, A_new, u_new = get_state_dependent_matrices_for_qp(X[i,:], v_d, epsilon)
-    #prob.update(q=q_new, u=u_new)
-    #prob.update(Ax=A_new.data)
+
     prob = osqp.OSQP()
     prob.setup(P, q_new, A_new, l, u_new)
     res = prob.solve()
 
     delta_acc.append(res.x[1])
     u_ego = res.x[0]
-
-    print(u_ego)
 
     U[i,:] = [u_ego,v_lead]
 
@@ -113,7 +109,6 @@ ax[2].plot(tvec,ca*g*np.ones(N),'r--')
 ax[2].plot(tvec,-cd*g*np.ones(N),'r--')
 ax[2].set_xlabel('t [s]')
 ax[2].set_ylabel('u/m [m/s^2]')
-
 
 fig.tight_layout()
 
