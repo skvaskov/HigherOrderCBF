@@ -131,7 +131,7 @@ ax[1,1].plot(tvec[:-1],U[:,0]/m_ego)
 ax[1,1].plot(tvec,ca*g*np.ones(N),'r--')
 ax[1,1].plot(tvec,-cd*g*np.ones(N),'r--')
 ax[1,1].set_xlabel('t [s]')
-ax[1,1].set_ylabel('u/m [m/s^2]')
+ax[1,1].set_ylabel('u/m [m/s$^2$]')
 
 fig.tight_layout()
 
